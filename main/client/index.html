@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>DCS-BIOS Dashboard</title>
+  <style>
+    #canvas { position: relative; width: 100vw; height: 100vh; background: #111; }
+    .block {
+      position: absolute;
+      background: #222;
+      color: #0f0;
+      border: 1px solid #555;
+      padding: 4px;
+      cursor: move;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+<div id="canvas"></div>
+<script>
+  const canvas = document.getElementById('canvas');
+  let config, layout, rules;
+  let state = {};
+  let ws;
+
+  fetch('/api/config')
+    .then(res => res.json())
+    .then(data => {
+      config = data.aircraft;
+      layout = data.layout;
+      rules = data.rules;
+      initBlocks();
+      connectWS();
+    });
+
+  function initBlocks() {
+    for (const blockLayout of layout.blocks) {
+      const blockConfig = config.blocks.find(b => b.id === blockLayout.id);
+      if (!blockConfig) continue;
+
+      const div = document.createElement('div');
+      div.className = 'block';
+      div.dataset.blockId = blockConfig.id;
+      div.style.left = blockLayout.x + 'px';
+      div.style.top = blockLayout.y + 'px';
+      div.style.width = blockLayout.width + 'px';
+      div.style.height = blockLayout.height + 'px';
+      div.innerText = blockConfig.label;
+
+      makeDraggable(div, blockLayout);
+      canvas.appendChild(div);
+    }
+  }
+
+  function connectWS() {
+    ws = new WebSocket(`ws://${location.host}`);
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'update') {
+        state = msg.state;
+        applyState();
+        applyEffects(msg.effects);
+      }
+    };
+  }
+
+  function applyState() {
+    document.querySelectorAll('.block').forEach(div => {
+      const blockId = div.dataset.blockId;
+      const blockConfig = config.blocks.find(b => b.id === blockId);
+      if (!blockConfig) return;
+
+      const value = state[blockConfig.source.controlId];
+      div.innerText = `${blockConfig.label}: ${formatValue(blockConfig, value)}`;
+    });
+  }
+
+  function formatValue(blockConfig, value) {
+    if (value == null) return '---';
+    if (blockConfig.format === 'binary') return value ? 'ON' : 'OFF';
+    if (blockConfig.format && blockConfig.format.includes('###')) {
+      return blockConfig.format.replace('###', value);
+    }
+    return value;
+  }
+
+  function applyEffects(effects) {
+    // Reset styles first
+    document.querySelectorAll('.block').forEach(div => {
+      div.style.backgroundColor = '#222';
+    });
+
+    for (const effect of effects) {
+      if (effect.type === 'setBlockStyle') {
+        const div = document.querySelector(`.block[data-block-id="${effect.blockId}"]`);
+        if (div && effect.style) {
+          Object.assign(div.style, effect.style);
+        }
+      }
+      if (effect.type === 'playSound') {
+        // Implement sound playback if you want
+      }
+    }
+  }
+
+  function makeDraggable(div, blockLayout) {
+    let offsetX, offsetY, dragging = false;
+
+    div.addEventListener('mousedown', (e) => {
+      dragging = true;
+      offsetX = e.clientX - div.offsetLeft;
+      offsetY = e.clientY - div.offsetTop;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const x = e.clientX - offsetX;
+      const y = e.clientY - offsetY;
+      div.style.left = x + 'px';
+      div.style.top = y + 'px';
+      blockLayout.x = x;
+      blockLayout.y = y;
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      // Persist layout
+      fetch('/api/layout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(layout)
+      });
+    });
+  }
+</script>
+</body>
+</html>

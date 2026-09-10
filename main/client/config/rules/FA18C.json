@@ -1,0 +1,32 @@
+{
+  "aircraftId": "FA18C",
+  "rules": [
+    {
+      "id": "gear_overspeed_warning",
+      "description": "Warn if gear down above 250 knots",
+      "conditions": [
+        {
+          "blockId": "gear_handle",
+          "operator": "==",
+          "value": 1
+        },
+        {
+          "blockId": "hud_airspeed",
+          "operator": ">",
+          "value": 250
+        }
+      ],
+      "actions": [
+        {
+          "type": "setBlockStyle",
+          "blockId": "gear_handle",
+          "style": { "backgroundColor": "red" }
+        },
+        {
+          "type": "playSound",
+          "soundId": "gear_warning"
+        }
+      ]
+    }
+  ]
+}

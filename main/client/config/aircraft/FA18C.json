@@ -1,0 +1,24 @@
+{
+  "id": "FA18C",
+  "name": "F/A-18C Hornet",
+  "blocks": [
+    {
+      "id": "hud_airspeed",
+      "label": "HUD Airspeed",
+      "source": {
+        "type": "dcs-bios",
+        "controlId": "HUD_AIRSPEED"
+      },
+      "format": "### kt"
+    },
+    {
+      "id": "gear_handle",
+      "label": "Gear Handle",
+      "source": {
+        "type": "dcs-bios",
+        "controlId": "GEAR_HANDLE"
+      },
+      "format": "binary"
+    }
+  ]
+}
